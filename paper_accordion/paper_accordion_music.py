@@ -3,6 +3,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
 import time
+import pyaudio
+import struct
+import math
+
+#music code modified from from https://stackoverflow.com/questions/26761055/synthesizing-an-audio-pitch-in-python
+
+SHRT_MAX=32767 # short uses 16 bits in complement 2
+
 
 def get_valid_arduino_values():
     
@@ -95,16 +103,16 @@ def data_initialization(): #determines the range of the sensor of folded vs stra
 
 
 
-def change_music(i):
+def change_music():
     global min_value #globals so I can access in animate
     global max_value
 
     arduino.flushInput()
     arduino.flushOutput()
    #get data from arduino
-    arduino_value = 0
+    arduino_value = get_valid_arduino_values()
     input = 0
-    print("before update")
+    print("value")
     print(min_value, max_value)
 
 
@@ -119,7 +127,45 @@ def change_music(i):
     else:
         input = ((max_value-arduino_value) / ((max_value)-(min_value)))
 
+    return input
+
+def my_sin(t,frequency):
+    radians = t * frequency * 2.0 * math.pi
+    pulse = math.sin(radians)
+    return pulse
+
+#pulse_function creates numbers in [-1,1] interval
+def generate(duration = 0.1,pulse_function = (lambda t: my_sin(t,1000))):
+    sample_width=2  
+    sample_rate = 44100
+    sample_duration = 1.0/sample_rate
+    total_samples = int(sample_rate * duration)
+    p = pyaudio.PyAudio()
+    pformat = p.get_format_from_width(sample_width)
+    stream = p.open(format=pformat,channels=1,rate=sample_rate,output=True)
+    for n in range(total_samples):
+        t = n*sample_duration
+        pulse = int(SHRT_MAX*pulse_function(t))
+        data=struct.pack("h",pulse)
+        stream.write(data)
+
+#example of a function I took from wikipedia.
+major_chord = f = lambda t: (my_sin(t,440)+my_sin(t,550)+my_sin(t,660))/3
+
+#choose any frequency you want
+#choose amplitude from 0 to 1
+def create_pulse_function(frequency=1000,amplitude=1):
+    return lambda t: amplitude * my_sin(t,frequency)
+    
 
 arduino = serial.Serial(port='COM3', baudrate=9600, timeout=.1)
 min_value, max_value = data_initialization()
-print(min_value, max_value)
+
+if __name__=="__main__":
+    # play fundamental sound at 1000Hz for 1 seconds at half intensity
+    for i in range(300):
+        input = change_music()
+        print(input)
+        f = create_pulse_function(261.63*(input+1),0.5)
+        generate(pulse_function=f)
+
