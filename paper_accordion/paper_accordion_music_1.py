@@ -10,7 +10,7 @@ import math
 #music code modified from from https://stackoverflow.com/questions/26761055/synthesizing-an-audio-pitch-in-python
 
 SHRT_MAX=32767 # short uses 16 bits in complement 2
-
+wave_delta_arcsin = 0.0
 
 def get_valid_arduino_values():
     
@@ -130,23 +130,32 @@ def change_music():
     return input
 
 def my_sin(t,frequency):
+    global wave_delta_arcsin
     radians = t * frequency * 2.0 * math.pi
-    pulse = math.sin(radians)
+    pulse = math.sin(radians+wave_delta_arcsin)
     return pulse
 
 #pulse_function creates numbers in [-1,1] interval
-def generate(duration = 0.1,pulse_function = (lambda t: my_sin(t,1000))):
+def generate(duration = 0.2,pulse_function = (lambda t: my_sin(t,1000))):
+    global wave_delta_arcsin
     sample_width=2  
     sample_rate = 44100
     sample_duration = 1.0/sample_rate
     total_samples = int(sample_rate * duration)
+    print("total samples: "+str(total_samples))
     p = pyaudio.PyAudio()
     pformat = p.get_format_from_width(sample_width)
     stream = p.open(format=pformat,channels=1,rate=sample_rate,output=True)
     for n in range(total_samples):
         t = n*sample_duration
-        pulse = int(SHRT_MAX*pulse_function(t))
+        pulse_func = pulse_function(t)
+        pulse = int(SHRT_MAX*pulse_func)
+       # print("n: "+str(n))
+        wave_delta_arcsin = np.arcsin(pulse_func)
+       # if n == total_samples:
+        #    wave_delta_arcsin = np.arcsin(pulse_func)
         data=struct.pack("h",pulse)
+        
         stream.write(data)
 
 #example of a function I took from wikipedia.
@@ -159,13 +168,13 @@ def create_pulse_function(frequency=1000,amplitude=1):
     
 
 arduino = serial.Serial(port='COM3', baudrate=9600, timeout=.1)
-min_value, max_value = data_initialization()
+min_value, max_value = 190.0, 350.0 #data_initialization()
 
 if __name__=="__main__":
     # play fundamental sound at 1000Hz for 1 seconds at half intensity
-    for i in range(300):
+    for i in range(1000):
         input = change_music()
-        print(input)
-        f = create_pulse_function(261.63*(input+1),0.5)
+        f = create_pulse_function(261.63*(np.log(input+1)+1),1)#261.63
         generate(pulse_function=f)
+
 
