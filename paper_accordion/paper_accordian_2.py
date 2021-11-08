@@ -52,7 +52,7 @@ def generate_sine(volume = 1, fs = 44100 , duration = 0.01):
     samples = (np.sin(2*np.pi*np.arange(fs*duration)*f/fs)).astype(np.float32)
     return samples
 
-arduino = serial.Serial(port='COM3', baudrate=9600, timeout=.1)
+arduino = serial.Serial(port='COM3', baudrate=9600, timeout=.3)
 min_value, max_value = 190.0, 350.0 #data_initialization()
 p = pyaudio.PyAudio()
 
