@@ -4,6 +4,7 @@ import serial
 import numpy as np
 import time
 import pyaudio
+from scipy import signal
 
 def get_valid_arduino_values():
     
@@ -48,13 +49,9 @@ def generate_sine(volume = 1, fs = 44100 , duration = 0.01):
     f = 440.0 *(change_music() +1) #(np.log(change_music() +1) + 1)
     print(change_music())
     # generate samples, note conversion to float32 array
-   
+    #samples = np.array((0.1*signal.sawtooth(2*np.pi*np.arange(fs*duration)*f/fs)+(np.sin(2*np.pi*np.arange(fs*duration)*f/fs))).astype(np.float32))
     samples = (np.sin(2*np.pi*np.arange(fs*duration)*f/fs)).astype(np.float32)
     return samples
-
-arduino = serial.Serial(port='COM3', baudrate=9600, timeout=.3)
-min_value, max_value = 190.0, 350.0 #data_initialization()
-p = pyaudio.PyAudio()
 
 def fading(chunks):
     chunk = chunks * 0.25
@@ -70,6 +67,11 @@ def fading(chunks):
     #print(len(chunk))
     return chunk.astype(np.float32)
 
+
+arduino = serial.Serial(port='COM3', baudrate=9600, timeout=.3)
+min_value, max_value = 210.0, 370.0 #data_initialization()
+p = pyaudio.PyAudio()
+
 # for paFloat32 sample values must be in range [-1.0, 1.0]
 stream = p.open(format=pyaudio.paFloat32,
                 channels=1,
@@ -78,12 +80,8 @@ stream = p.open(format=pyaudio.paFloat32,
 
 # play. May repeat with different volume values (if done interactively) 
 for i in range(100):
-    samples = generate_sine(volume = 0.1, fs = 44100 , duration = 0.3)
-    #print("samples")
-    
-    #print(samples)
+    samples = generate_sine(volume = 0.5, fs = 44100 , duration = 0.3)
     stream.write(fading(samples).tobytes())
-    #time.sleep(0.3)
     
 
 stream.stop_stream()
